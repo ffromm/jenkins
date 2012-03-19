@@ -28,7 +28,11 @@ import net.sf.json.JSONObject;
 import org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.*;
 
 /**
  * Quick test for {@link UpdateCenter}.
@@ -39,8 +43,15 @@ public class UpdateCenterTest extends TestCase {
     public void testData() throws IOException {
         // check if we have the internet connectivity. See HUDSON-2095
         try {
-            new URL("http://updates.jenkins-ci.org/").openStream();
-        } catch (IOException e) {
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            List<Future<InputStream>> futures = executor.invokeAll(Arrays.asList(new Task()), 2, TimeUnit.SECONDS);
+            executor.shutdown();
+
+            if(futures != null && futures.size() > 0 && futures.get(0).isCancelled()) {
+                System.out.println("Skipping this test. No internet connectivity in 2 seconds");
+                return;
+            }
+        } catch (Exception e) {
             System.out.println("Skipping this test. No internet connectivity");
             return;
         }
@@ -54,5 +65,11 @@ public class UpdateCenterTest extends TestCase {
         assertTrue(data.core.url.startsWith("http://updates.jenkins-ci.org/"));
         assertTrue(data.plugins.containsKey("rake"));
         System.out.println(data.core.url);
+    }
+
+    class Task implements Callable<InputStream> {
+        public InputStream call() throws Exception {
+            return new URL("http://updates.jenkins-ci.org/").openStream();
+        }
     }
 }
