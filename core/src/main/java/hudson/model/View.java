@@ -52,6 +52,7 @@ import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
@@ -242,7 +243,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
     public String getDescription() {
         return description;
     }
-
+    
     /**
      * Gets the view properties configured for this view.
      * @since 1.406
@@ -364,53 +365,52 @@ public abstract class View extends AbstractModelObject implements AccessControll
     }
     
     public List<Computer> getComputers() {
-    	Computer[] computers = Jenkins.getInstance().getComputers();
-    	
-    	if (!isFilterExecutors()) {
-    		return Arrays.asList(computers);
-    	}
-    	
-    	List<Computer> result = new ArrayList<Computer>();
-    	
-    	boolean roam = false;
-    	HashSet<Label> labels = new HashSet<Label>();
-    	for (Item item: getItems()) {
-    		if (item instanceof AbstractProject<?,?>) {
-    			AbstractProject<?,?> p = (AbstractProject<?, ?>) item;
-    			Label l = p.getAssignedLabel();
-    			if (l != null) {
-    				labels.add(l);
-    			} else {
-    				roam = true;
-    			}
-    		}
-    	}
-    	
-    	for (Computer c: computers) {
-    		Node n = c.getNode();
-    		if (n != null) {
-    			if (roam && n.getMode() == Mode.NORMAL || !Collections.disjoint(n.getAssignedLabels(), labels)) {
-    				result.add(c);
-    			}
-    		}
-    	}
-    	
-    	return result;
+        Computer[] computers = Jenkins.getInstance().getComputers();
+
+        if (!isFilterExecutors()) {
+            return Arrays.asList(computers);
+        }
+
+        List<Computer> result = new ArrayList<Computer>();
+
+        HashSet<Label> labels = new HashSet<Label>();
+        for (Item item : getItems()) {
+            if (item instanceof AbstractProject<?, ?>) {
+                labels.addAll(((AbstractProject<?, ?>) item).getRelevantLabels());
+            }
+        }
+
+        for (Computer c : computers) {
+            Node n = c.getNode();
+            if (n != null) {
+                if (labels.contains(null) && n.getMode() == Mode.NORMAL || !Collections.disjoint(n.getAssignedLabels(), labels)) {
+                    result.add(c);
+                }
+            }
+        }
+
+        return result;
     }
     
     public List<Queue.Item> getQueueItems() {
-    	if (!isFilterQueue()) {
-    		return Arrays.asList(Jenkins.getInstance().getQueue().getItems());
-    	}
-    	
-    	Collection<TopLevelItem> items = getItems(); 
-    	List<Queue.Item> result = new ArrayList<Queue.Item>();
-    	for (Queue.Item qi: Jenkins.getInstance().getQueue().getItems()) {
-    		if (items.contains(qi.task)) {
-    			result.add(qi);
-    		}
-    	}
-    	return result;
+        if (!isFilterQueue()) {
+            return Arrays.asList(Jenkins.getInstance().getQueue().getItems());
+        }
+
+        Collection<TopLevelItem> items = getItems();
+        List<Queue.Item> result = new ArrayList<Queue.Item>();
+        for (Queue.Item qi : Jenkins.getInstance().getQueue().getItems()) {
+            if (items.contains(qi.task)) {
+                result.add(qi);
+            } else
+            if (qi.task instanceof AbstractProject<?, ?>) {
+                AbstractProject<?,?> project = (AbstractProject<?, ?>) qi.task;
+                if (items.contains(project.getRootProject())) {
+                    result.add(qi);
+                }
+            }
+        }
+        return result;
     }
 
     /**
@@ -721,9 +721,9 @@ public abstract class View extends AbstractModelObject implements AccessControll
      *
      * Subtypes should override the {@link #submit(StaplerRequest)} method.
      */
+    @RequirePOST
     public final synchronized void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
         checkPermission(CONFIGURE);
-        requirePOST();
 
         submit(req);
 
@@ -750,8 +750,8 @@ public abstract class View extends AbstractModelObject implements AccessControll
     /**
      * Deletes this view.
      */
+    @RequirePOST
     public synchronized void doDoDelete(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
-        requirePOST();
         checkPermission(DELETE);
 
         owner.deleteView(this);

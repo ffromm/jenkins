@@ -110,6 +110,8 @@ import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
 import com.thoughtworks.xstream.XStream;
+import org.kohsuke.stapler.interceptor.RequirePOST;
+
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 
@@ -261,6 +263,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         this.project = job;
         this.timestamp = timestamp;
         this.state = State.NOT_STARTED;
+		getRootDir().mkdirs();
     }
 
     /**
@@ -848,9 +851,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
      * Files related to this {@link Run} should be stored below this directory.
      */
     public File getRootDir() {
-        File f = new File(project.getBuildDir(),getId());
-        f.mkdirs();
-        return f;
+        return new File(project.getBuildDir(),getId());
     }
 
     /**
@@ -1779,8 +1780,8 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
     /**
      * Deletes the build when the button is pressed.
      */
+    @RequirePOST
     public void doDoDelete( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
-        requirePOST();
         checkPermission(DELETE);
 
         // We should not simply delete the build if it has been explicitly
@@ -1893,7 +1894,7 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         env.put("HUDSON_SERVER_COOKIE",Util.getDigestOf("ServerID:"+ Jenkins.getInstance().getSecretKey())); // Legacy compatibility
         env.put("BUILD_NUMBER",String.valueOf(number));
         env.put("BUILD_ID",getId());
-        env.put("BUILD_TAG","jenkins-"+getParent().getName()+"-"+number);
+        env.put("BUILD_TAG","jenkins-"+getParent().getFullName().replace('/', '-')+"-"+number);
         env.put("JOB_NAME",getParent().getFullName());
         return env;
     }
@@ -1926,9 +1927,9 @@ public abstract class Run <JobT extends Job<JobT,RunT>,RunT extends Run<JobT,Run
         return project.getEstimatedDuration();
     }
 
+    @RequirePOST
     public HttpResponse doConfigSubmit( StaplerRequest req ) throws IOException, ServletException, FormException {
         checkPermission(UPDATE);
-        requirePOST();
         BulkChange bc = new BulkChange(this);
         try {
             JSONObject json = req.getSubmittedForm();
