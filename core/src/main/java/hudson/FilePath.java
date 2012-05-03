@@ -213,14 +213,18 @@ public final class FilePath implements Serializable {
      */
     public FilePath(FilePath base, String rel) {
         this.channel = base.channel;
-        if(isAbsolute(rel)) {
-            // absolute
-            this.remote = normalize(rel);
-        } else 
+        this.remote = normalize(resolvePathIfRelative(base, rel));
+    }
+
+    private String resolvePathIfRelative(FilePath base, String rel) {
+        if(isAbsolute(rel)) return rel;
         if(base.isUnix()) {
-            this.remote = normalize(base.remote+'/'+rel);
+            // shouldn't need this replace, but better safe than sorry
+            return base.remote+'/'+rel.replace('\\','/');
         } else {
-            this.remote = normalize(base.remote+'\\'+rel);
+            // need this replace, see Slave.getWorkspaceFor and AbstractItem.getFullName, nested jobs on Windows
+            // slaves will always have a rel containing at least one '/' character. JENKINS-13649
+            return base.remote+'\\'+rel.replace('/','\\');
         }
     }
 
@@ -778,8 +782,11 @@ public final class FilePath implements Serializable {
             try {
                 IOUtils.copy(i,o);
             } finally {
-                o.close();
-                i.close();
+                try {
+                    o.close();
+                } finally {
+                    i.close();
+                }
             }
         }
     }
