@@ -61,7 +61,34 @@ Upcoming changes</a>
 
 <!-- these changes are controlled by the release process. DO NOT MODIFY -->
 <div id="rc" style="display:none;"><!--=BEGIN=-->
-<h3><a name=v1.463>What's new in 1.463</a> <!--=DATE=--></h3>
+<h3><a name=v1.466>What's new in 1.466</a> <!--=DATE=--></h3>
+<ul class=image>
+  <li class=rfe>
+    Exposed plugin manager and update center to the REST API
+  <li class=rfe>
+    Enabled concurrent build support for matrix projects
+</ul>
+</div><!--=END=-->
+<h3><a name=v1.465>What's new in 1.465</a> (2012/05/21)</h3>
+<ul class=image>
+  <li class=bug>
+    Artifact archiving from an ssh slave fails if symlinks are present
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-13202">issue 13202</a>)
+</ul>
+<h3><a name=v1.464>What's new in 1.464</a> (2012/05/14)</h3>
+<ul class=image>
+  <li class=bug>
+    Don't try to set cookies on cachable requests.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-12585">issue 12585</a>)
+  <li class=bug>
+    Fixed a regression in 1.462 that introduced Java6 dependency.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-13659">issue 13659</a>)
+  <li class=bug>
+    Fixed JDK auto-installer
+  <li class=bug>
+    missing search image on plugin manager.
+</ul>
+<h3><a name=v1.463>What's new in 1.463</a> (2012/05/07)</h3>
 <ul class=image>
   <li class=bug>
     Fixed a bug in the Content-Range header handling.
@@ -91,7 +118,6 @@ Upcoming changes</a>
     Publishers can be now reordered by the user.
     (<a href="https://groups.google.com/forum/?fromgroups#!topic/jenkinsci-dev/UQLvxQclyb4">discussion</a>)
 </ul>
-</div><!--=END=-->
 <h3><a name=v1.462>What's new in 1.462</a> (2012/04/30)</h3>
 <ul class=image>
   <li class=bug>
@@ -942,6 +968,7 @@ Upcoming changes</a>
     (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10556">issue 10556</a>)
   <li class=rfe>
     Record and display who aborted builds.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-5754">issue 5754</a>)
   <li class=rfe>
     Added API token support.
     (<a href="https://issues.jenkins-ci.org/browse/JENKINS-9363">issue 9363</a>)
