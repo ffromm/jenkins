@@ -2374,6 +2374,7 @@ public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLe
         return fixNull(label).trim();
     }
 
+    @Override
     public void setLabelString(String label) throws IOException {
         this.label = label;
         save();
