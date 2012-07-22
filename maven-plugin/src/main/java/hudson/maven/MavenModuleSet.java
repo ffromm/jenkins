@@ -37,6 +37,7 @@ import hudson.Util;
 import hudson.maven.local_repo.DefaultLocalRepositoryLocator;
 import hudson.maven.local_repo.LocalRepositoryLocator;
 import hudson.maven.local_repo.PerJobLocalRepositoryLocator;
+import hudson.maven.settings.SettingConfig;
 import hudson.maven.settings.SettingsProviderUtils;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
@@ -96,8 +97,6 @@ import net.sf.json.JSONObject;
 
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.maven.model.building.ModelBuildingRequest;
-import org.jenkinsci.lib.configprovider.ConfigProvider;
-import org.jenkinsci.lib.configprovider.model.Config;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.HttpResponses;
 import org.kohsuke.stapler.QueryParameter;
@@ -117,7 +116,6 @@ import org.kohsuke.stapler.export.Exported;
  */
 public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenModuleSetBuild> implements TopLevelItem, ItemGroup<MavenModule>, SCMedItem, Saveable, BuildableItemWithBuildWrappers {
 	
-
     /**
      * All {@link MavenModule}s, keyed by their {@link MavenModule#getModuleName()} module name}s.
      */
@@ -801,20 +799,32 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
         final Set<ResourceActivity> activities = new HashSet<ResourceActivity>();
 
         activities.addAll(super.getResourceActivities());
-        activities.addAll(Util.filter(publishers,ResourceActivity.class));
+        activities.addAll(Util.filter(publishers, ResourceActivity.class));
         activities.addAll(Util.filter(buildWrappers, ResourceActivity.class));
-        activities.addAll(Util.filter(prebuilders,ResourceActivity.class));
-        activities.addAll(Util.filter(postbuilders,ResourceActivity.class));
+        activities.addAll(Util.filter(prebuilders, ResourceActivity.class));
+        activities.addAll(Util.filter(postbuilders, ResourceActivity.class));
 
         return activities;
     }
 
     /**
-     * Gets the location of top-level <tt>pom.xml</tt> relative to the workspace root.
+     *
+     * @deprecated for backward comp only
+     * @return
      */
-    public String getRootPOM() {
-        if(rootPOM==null)   return "pom.xml";
-        return rootPOM;
+    public String getRootPOM(){
+        return getRootPOM( null );
+    }
+
+    /**
+     * Gets the location of top-level <tt>pom.xml</tt> relative to the workspace root.
+     * @since 1.466
+     */
+    public String getRootPOM(EnvVars env) {
+        if (rootPOM == null) return "pom.xml";
+        // JENKINS-13822
+        if (env == null) return rootPOM;
+        return env.expand(rootPOM);
     }
 
     public void setRootPOM(String rootPOM) {
@@ -944,34 +954,16 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
      * @since 1.426
      * @return
      */
-    public List<Config> getAllMavenSettingsConfigs() {
-        List<Config> mavenSettingsConfigs = new ArrayList<Config>();
-        ExtensionList<ConfigProvider> configProviders = ConfigProvider.all();
-        if (configProviders != null && configProviders.size() > 0) {
-            for (ConfigProvider configProvider : configProviders) {
-            	if (SettingsProviderUtils.isMavenSettingsProvider( configProvider )){
-                    mavenSettingsConfigs.addAll( configProvider.getAllConfigs() );
-                }
-            }
-        }
-        return mavenSettingsConfigs;
+    public List<SettingConfig> getAllMavenSettingsConfigs() {
+        return SettingsProviderUtils.getAllMavenSettingsConfigs();
     }
     
     /**
      * @since 1.426
      * @return
      */
-    public List<Config> getAllGlobalMavenSettingsConfigs() {
-        List<Config> globalMavenSettingsConfigs = new ArrayList<Config>();
-        ExtensionList<ConfigProvider> configProviders = ConfigProvider.all();
-        if (configProviders != null && configProviders.size() > 0) {
-            for (ConfigProvider configProvider : configProviders) {
-                if (SettingsProviderUtils.isGlobalMavenSettingsProvider( configProvider )){
-                    globalMavenSettingsConfigs.addAll( configProvider.getAllConfigs() );
-                }
-            }
-        }
-        return globalMavenSettingsConfigs;
+    public List<SettingConfig> getAllGlobalMavenSettingsConfigs() {
+        return SettingsProviderUtils.getAllGlobalMavenSettingsConfigs();
     }
 
     /**
@@ -1062,7 +1054,7 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
         processPlugins = req.hasParameter( "maven.processPlugins" );
         mavenValidationLevel = NumberUtils.toInt( req.getParameter( "maven.validationLevel" ), -1 );
         reporters.rebuild(req,json,MavenReporters.getConfigurableList());
-        publishers.rebuild(req,json,BuildStepDescriptor.filter(Publisher.all(),this.getClass()));
+        publishers.rebuildHetero(req, json, Publisher.all(), "publisher");
         buildWrappers.rebuild(req,json,BuildWrappers.getFor(this));
         settingConfigId = req.getParameter( "maven.mavenSettingsConfigId" );
         globalSettingConfigId = req.getParameter( "maven.mavenGlobalSettingConfigId" );

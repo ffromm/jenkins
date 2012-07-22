@@ -48,6 +48,7 @@ import hudson.util.XStream2;
 import jenkins.RestartRequiredException;
 import jenkins.model.Jenkins;
 import org.acegisecurity.Authentication;
+import org.acegisecurity.context.SecurityContext;
 import org.apache.commons.io.input.CountingInputStream;
 import org.apache.commons.io.output.NullOutputStream;
 import org.jvnet.localizer.Localizable;
@@ -82,6 +83,8 @@ import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.acegisecurity.context.SecurityContextHolder;
+import org.kohsuke.stapler.export.Exported;
+import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 
@@ -100,6 +103,7 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
  * @author Kohsuke Kawaguchi
  * @since 1.220
  */
+@ExportedBean
 public class UpdateCenter extends AbstractModelObject implements Saveable {
 	
     private static final String UPDATE_CENTER_URL = System.getProperty(UpdateCenter.class.getName()+".updateCenterUrl","http://updates.jenkins-ci.org/");
@@ -141,6 +145,10 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
         configure(new UpdateCenterConfiguration());
     }
 
+    public Api getApi() {
+        return new Api(this);
+    }
+
     /**
      * Configures update center to get plugins/updates from alternate servers,
      * and optionally using alternate strategies for downloading, installing
@@ -161,6 +169,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
      * @return
      *      can be empty but never null. Oldest entries first.
      */
+    @Exported
     public List<UpdateCenterJob> getJobs() {
         synchronized (jobs) {
             return new ArrayList<UpdateCenterJob>(jobs);
@@ -203,6 +212,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
      * @return
      *      can be empty but never null.
      */
+    @Exported
     public PersistedList<UpdateSite> getSites() {
         return sites;
     }
@@ -747,6 +757,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
      *
      * This object will have the <tt>row.jelly</tt> which renders the job on UI.
      */
+    @ExportedBean
     public abstract class UpdateCenterJob implements Runnable {
         /**
          * Which {@link UpdateSite} does this belong to?
@@ -762,12 +773,21 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
             this.site = site;
         }
 
+        public Api getApi() {
+            return new Api(this);
+        }
+
         /**
          * @deprecated as of 1.326
          *      Use {@link #submit()} instead.
          */
         public void schedule() {
             submit();
+        }
+
+        @Exported
+        public String getType() {
+            return getClass().getSimpleName();
         }
 
         /**
@@ -781,6 +801,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
             return installerService.submit(this,this);
         }
 
+        @Exported
         public Throwable getError() {
             return error;
         }
@@ -793,11 +814,13 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
         /**
          * Unique ID that identifies this job.
          */
+        @Exported
         public final int id = iota.incrementAndGet();
                
          /**
          * Immutable state of this job.
          */
+         @Exported(inline=true)
         public volatile RestartJenkinsJobStatus status = new Pending();
         
         /**
@@ -828,15 +851,19 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
                 error = exception;
             }
         }
-        
+
+        @ExportedBean
         public abstract class RestartJenkinsJobStatus {
-            
+            @Exported
             public final int id = iota.incrementAndGet();
    
         }
         
         public class Pending extends RestartJenkinsJobStatus {
-            
+            @Exported
+            public String getType() {
+                return getClass().getSimpleName();
+            }
         }
         
         public class Running extends RestartJenkinsJobStatus {
@@ -911,10 +938,12 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
         /**
          * Unique ID that identifies this job.
          */
+        @Exported
         public final int id = iota.incrementAndGet();
         /**
          * Immutable object representing the current state of this job.
          */
+        @Exported(inline=true)
         public volatile InstallationStatus status = new Pending();
 
         /**
@@ -927,6 +956,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
          */
         protected abstract File getDestination();
 
+        @Exported
         public abstract String getName();
 
         /**
@@ -940,6 +970,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
         /**
          * Get the user that initiated this job
          */
+        @Exported
         public Authentication getUser() {
             return this.authentication;
         }
@@ -1001,8 +1032,13 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
          */
         public abstract class InstallationStatus extends Throwable {
             public final int id = iota.incrementAndGet();
+            @Exported
             public boolean isSuccess() {
                 return false;
+            }
+            @Exported
+            public final String getType() {
+                return getClass().getSimpleName();
             }
         }
 
@@ -1075,6 +1111,7 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
         /**
          * What plugin are we trying to install?
          */
+        @Exported
         public final Plugin plugin;
 
         private final PluginManager pm = Jenkins.getInstance().getPluginManager();
@@ -1121,13 +1158,14 @@ public class UpdateCenter extends AbstractModelObject implements Saveable {
 
             // if this is a bundled plugin, make sure it won't get overwritten
             PluginWrapper pw = plugin.getInstalled();
-            if (pw!=null && pw.isBundled())
+            if (pw!=null && pw.isBundled()) {
+                SecurityContext oldContext = ACL.impersonate(ACL.SYSTEM);
                 try {
-                    SecurityContextHolder.getContext().setAuthentication(ACL.SYSTEM);
                     pw.doPin();
                 } finally {
-                    SecurityContextHolder.clearContext();
+                    SecurityContextHolder.setContext(oldContext);
                 }
+            }
 
             if (dynamicLoad) {
                 try {

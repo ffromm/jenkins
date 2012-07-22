@@ -613,6 +613,12 @@ LABEL.attach-previous {
   text-align: left;
 }
 
+/* ============================ list view entries ======================== */
+div.listview-jobs {
+  max-height:300px;
+  overflow:auto;
+}
+
 /* ============================ parameters form ========================== */
 
 table.parameters {
@@ -877,7 +883,7 @@ DIV.yahooTree td {
   text-align: left;
   width:25em;
   position: absolute;
-  z-index: 999;
+  z-index: 1000;
 }
 
 #search-box-completion .yui-ac-content {

@@ -23,9 +23,12 @@
  */
 package hudson.model;
 
+import com.google.common.collect.Maps;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.AbstractMap;
 import java.util.Collections;
 import java.util.Comparator;
@@ -33,9 +36,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.text.SimpleDateFormat;
-import java.text.ParseException;
 
 /**
  * {@link Map} from build number to {@link Run}.
@@ -163,6 +165,24 @@ public final class RunMap<R extends Run<?,R>> extends AbstractMap<Integer,R> imp
         return builds.lastKey();
     }
 
+    /**
+     * This is the newest build (with the biggest build number)
+     */
+    public R newestValue() {
+        SortedMap<Integer, R> _builds = builds;
+        if (_builds.isEmpty())  return null;
+        return _builds.get(firstKey());
+    }
+
+    /**
+     * This is the oldest build (with the smallest build number)
+     */
+    public R oldestValue() {
+        SortedMap<Integer, R> _builds = builds;
+        if (_builds.isEmpty())  return null;
+        return _builds.get(lastKey());
+    }
+
     public static final Comparator<Comparable> COMPARATOR = new Comparator<Comparable>() {
         public int compare(Comparable o1, Comparable o2) {
             return -o1.compareTo(o2);
@@ -192,7 +212,7 @@ public final class RunMap<R extends Run<?,R>> extends AbstractMap<Integer,R> imp
         buildDir.mkdirs();
         String[] buildDirs = buildDir.list(new FilenameFilter() {
             public boolean accept(File dir, String name) {
-                // HUDSON-1461 sometimes create bogus data directories with impossible dates, such as year 0, April 31st,
+                // JENKINS-1461 sometimes create bogus data directories with impossible dates, such as year 0, April 31st,
                 // or August 0th. Date object doesn't roundtrip those, so we eventually fail to load this data.
                 // Don't even bother trying.
                 if (!isCorrectDate(name)) {
@@ -213,20 +233,45 @@ public final class RunMap<R extends Run<?,R>> extends AbstractMap<Integer,R> imp
             }
         });
 
+        // keep all those that are building intact.
+        Map<Integer,R> building = Maps.newHashMap();
+        for (R b=newestValue(); b!=null && b.isBuilding(); b=b.getPreviousBuild()) {
+            building.put(b.getNumber(), b);
+        }
+
         for( String build : buildDirs ) {
             File d = new File(buildDir,build);
             if(new File(d,"build.xml").exists()) {
                 // if the build result file isn't in the directory, ignore it.
                 try {
                     R b = cons.create(d);
-                    builds.put( b.getNumber(), b );
+                    R existing = builds.put(b.getNumber(), b);
+                    if (existing != null) {
+                        LOGGER.log(Level.WARNING, "multiple runs claiming to be #{0}; using run from {1}", new Object[] {b.getNumber(), d});
+                    }
+                } catch (IOException e) {
+                    LOGGER.log(Level.WARNING, "could not load " + d, e);
+                } catch (InstantiationError e) {
+                    LOGGER.log(Level.WARNING, "could not load " + d, e);
+                }
+            }
+        }
+
+        // overlay what's currently building on top of what's loaded
+        builds.putAll(building);
+        /*
+            // we probably aren't saving every little changes during the build to disk,
+            // so it's risky to reload these from disk.
+            for (R b : building.values()) {
+                try {
+                    b.reload();
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (InstantiationError e) {
                     e.printStackTrace();
                 }
             }
-        }
+        */
 
         reset(builds);
 

@@ -34,8 +34,7 @@ import hudson.maven.MavenBuild.ProxyImpl2;
 import hudson.maven.reporters.MavenAggregatedArtifactRecord;
 import hudson.maven.reporters.MavenFingerprinter;
 import hudson.maven.reporters.MavenMailer;
-import hudson.maven.settings.GlobalMavenSettingsProvider;
-import hudson.maven.settings.MavenSettingsProvider;
+import hudson.maven.settings.SettingConfig;
 import hudson.maven.settings.SettingsProviderUtils;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
@@ -92,7 +91,6 @@ import org.apache.maven.model.building.ModelBuildingRequest;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingException;
 import org.codehaus.plexus.util.PathTool;
-import org.jenkinsci.lib.configprovider.model.Config;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
@@ -171,9 +169,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
             Node node = computer.getNode();
             if (node != null) {
                 mvn = mvn.forNode(node, log);
-                
-                envs.put("M2_HOME", mvn.getHome());
-                envs.put("PATH+MAVEN", mvn.getHome() + "/bin");
+                mvn.buildEnvVars(envs);
             }
         }
         
@@ -478,7 +474,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
     }
 
     public void run() {
-        run(new RunnerImpl());
+        execute(new MavenModuleSetBuildExecution());
         getProject().updateTransientActions();
     }
 
@@ -558,7 +554,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
      * The sole job of the {@link MavenModuleSet} build is to update SCM
      * and triggers module builds.
      */
-    private class RunnerImpl extends AbstractRunner {
+    private class MavenModuleSetBuildExecution extends AbstractBuildExecution {
         private Map<ModuleName,MavenBuild.ProxyImpl2> proxies;
 
         protected Result doRun(final BuildListener listener) throws Exception {
@@ -624,7 +620,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
 
                         String settingsConfigId = project.getSettingConfigId();
                         if (StringUtils.isNotBlank(settingsConfigId)) {
-                            Config settingsConfig = SettingsProviderUtils.findConfig( settingsConfigId, MavenSettingsProvider.class, org.jenkinsci.lib.configprovider.maven.MavenSettingsProvider.class );
+                            SettingConfig settingsConfig = SettingsProviderUtils.findSettings(settingsConfigId);
                             if (settingsConfig == null) {
                                 logger.println(" your Apache Maven build is setup to use a config with id " + settingsConfigId
                                                    + " but cannot find the config");
@@ -639,7 +635,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
 
                         String globalSettingsConfigId = project.getGlobalSettingConfigId();
                         if (StringUtils.isNotBlank(globalSettingsConfigId)) {
-                            Config settingsConfig = SettingsProviderUtils.findConfig( globalSettingsConfigId, GlobalMavenSettingsProvider.class, org.jenkinsci.lib.configprovider.maven.GlobalMavenSettingsProvider.class );
+                            SettingConfig settingsConfig = SettingsProviderUtils.findSettings(globalSettingsConfigId);
                             if (settingsConfig == null) {
                                 logger.println(" your Apache Maven build is setup to use a global settings config with id " + globalSettingsConfigId
                                                    + " but cannot find the config");
@@ -692,7 +688,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
                         // choice of module root ('ws' in this method) is somewhat arbitrary
                         // when multiple CVS/SVN modules are checked out, so also check
                         // the path against the workspace root if that seems like what the user meant (see issue #1293)
-                        String rootPOM = project.getRootPOM();
+                        String rootPOM = project.getRootPOM(envVars); // JENKINS-13822
                         FilePath pom = getModuleRoot().child(rootPOM);
                         FilePath parentLoc = getWorkspace().child(rootPOM);
                         if(!pom.exists() && parentLoc.exists())
@@ -1073,6 +1069,8 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
         
         private int mavenValidationLevel = -1;
         
+        private boolean updateSnapshots = false;
+        
         String rootPOMRelPrefix;
         
         public PomParser(BuildListener listener, MavenInstallation mavenHome, String mavenVersion, EnvVars envVars, MavenModuleSetBuild build) {
@@ -1080,9 +1078,10 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
             MavenModuleSet project = build.getProject();
             this.listener = listener;
             this.mavenHome = mavenHome;
-            this.rootPOM = project.getRootPOM();
+            this.rootPOM = project.getRootPOM(envVars); // JENKINS-13822
             this.profiles = project.getProfiles();
             this.properties = project.getMavenProperties();
+            this.updateSnapshots = isUpdateSnapshots(project.getGoals());
             ParametersDefinitionProperty parametersDefinitionProperty = project.getProperty( ParametersDefinitionProperty.class );
             if (parametersDefinitionProperty != null && parametersDefinitionProperty.getParameterDefinitions() != null) {
                 for (ParameterDefinition parameterDefinition : parametersDefinitionProperty.getParameterDefinitions()) {
@@ -1124,7 +1123,10 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
             this.globalSetings = project.globalSettingConfigPath;
         }
 
-        
+        private boolean isUpdateSnapshots(String goals) {
+          return StringUtils.contains(goals, "-U") || StringUtils.contains(goals, "--update-snapshots");
+        }
+
         public List<PomInfo> invoke(File ws, VirtualChannel channel) throws IOException {
             File pom;
             
@@ -1190,6 +1192,7 @@ public class MavenModuleSetBuild extends AbstractMavenBuild<MavenModuleSet,Maven
                                                                                       profiles, properties,
                                                                                       privateRepository, settingsLoc );
                 mavenEmbedderRequest.setTransferListener( new SimpleTransferListener(listener) );
+                mavenEmbedderRequest.setUpdateSnapshots( this.updateSnapshots );
                 
                 mavenEmbedderRequest.setProcessPlugins( this.processPlugins );
                 mavenEmbedderRequest.setResolveDependencies( this.resolveDependencies );

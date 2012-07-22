@@ -31,6 +31,7 @@ import hudson.Indenter;
 import hudson.Util;
 import hudson.model.Descriptor.FormException;
 import hudson.model.Node.Mode;
+import hudson.model.labels.LabelAtom;
 import hudson.model.labels.LabelAtomPropertyDescriptor;
 import hudson.scm.ChangeLogSet.Entry;
 import hudson.search.CollectionSearchIndex;
@@ -67,6 +68,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -383,7 +385,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
         for (Computer c : computers) {
             Node n = c.getNode();
             if (n != null) {
-                if (labels.contains(null) && n.getMode() == Mode.NORMAL || !Collections.disjoint(n.getAssignedLabels(), labels)) {
+                if (labels.contains(null) && n.getMode() == Mode.NORMAL || !isDisjoint(n.getAssignedLabels(), labels)) {
                     result.add(c);
                 }
             }
@@ -391,7 +393,14 @@ public abstract class View extends AbstractModelObject implements AccessControll
 
         return result;
     }
-    
+
+    private boolean isDisjoint(Collection c1, Collection c2) {
+        for (Object o : c1)
+            if (c2.contains(o))
+                return false;
+        return true;
+    }
+
     public List<Queue.Item> getQueueItems() {
         if (!isFilterQueue()) {
             return Arrays.asList(Jenkins.getInstance().getQueue().getItems());
@@ -583,14 +592,14 @@ public abstract class View extends AbstractModelObject implements AccessControll
     /**
      * Does this {@link View} has any associated user information recorded?
      */
-    public final boolean hasPeople() {
+    public boolean hasPeople() {
         return People.isApplicable(getItems());
     }
 
     /**
      * Gets the users that show up in the changelog of this job collection.
      */
-    public final People getPeople() {
+    public People getPeople() {
         return new People(this);
     }
 
@@ -841,6 +850,7 @@ public abstract class View extends AbstractModelObject implements AccessControll
     public static final Permission CREATE = new Permission(PERMISSIONS,"Create", Messages._View_CreatePermission_Description(), Permission.CREATE, PermissionScope.ITEM_GROUP);
     public static final Permission DELETE = new Permission(PERMISSIONS,"Delete", Messages._View_DeletePermission_Description(), Permission.DELETE, PermissionScope.ITEM_GROUP);
     public static final Permission CONFIGURE = new Permission(PERMISSIONS,"Configure", Messages._View_ConfigurePermission_Description(), Permission.CONFIGURE, PermissionScope.ITEM_GROUP);
+    public static final Permission READ = new Permission(PERMISSIONS,"Read", Messages._View_ReadPermission_Description(), Permission.READ, PermissionScope.ITEM_GROUP);
 
     // to simplify access from Jelly
     public static Permission getItemCreatePermission() {
