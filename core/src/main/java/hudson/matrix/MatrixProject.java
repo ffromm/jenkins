@@ -423,6 +423,17 @@ public class MatrixProject extends AbstractProject<MatrixProject,MatrixBuild> im
 
         return r;
     }
+    
+    @Override
+    protected void updateTransientActions(){
+        super.updateTransientActions();
+        if(getActiveConfigurations() !=null){
+            // update all transient actions in configurations too.
+            for(MatrixConfiguration configuration: getActiveConfigurations()){
+                configuration.updateTransientActions();
+            }
+        }
+    }
 
     /**
      * Gets the subset of {@link AxisList} that are not system axes.
@@ -455,7 +466,6 @@ public class MatrixProject extends AbstractProject<MatrixProject,MatrixBuild> im
     @Override
     public void onLoad(ItemGroup<? extends Item> parent, String name) throws IOException {
         super.onLoad(parent,name);
-        Collections.sort(axes); // perhaps the file was edited on disk and the sort order might have been broken
         builders.setOwner(this);
         publishers.setOwner(this);
         buildWrappers.setOwner(this);
@@ -579,7 +589,7 @@ public class MatrixProject extends AbstractProject<MatrixProject,MatrixBuild> im
         if (context!=null) {
             List<Set<String>> axesList = Lists.newArrayList();
             for (Axis axis : axes)
-                axesList.add(new LinkedHashSet<String>(axis.getValues()));
+                axesList.add(Sets.newLinkedHashSet(axis.rebuild(context)));
 
             activeCombinations = Iterables.transform(Sets.cartesianProduct(axesList), new Function<List<String>, Combination>() {
                 public Combination apply(@Nullable List<String> strings) {

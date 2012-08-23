@@ -298,6 +298,7 @@ import static java.util.logging.Level.SEVERE;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import javax.annotation.CheckForNull;
 
 /**
  * Root object of the system.
@@ -305,7 +306,7 @@ import java.util.regex.Pattern;
  * @author Kohsuke Kawaguchi
  */
 @ExportedBean
-public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLevelItem>, StaplerProxy, StaplerFallback, ViewGroup, AccessControlled, DescriptorByNameOwner, ModelObjectWithContextMenu {
+public class Jenkins extends AbstractCIBase implements ModifiableTopLevelItemGroup, StaplerProxy, StaplerFallback, ViewGroup, AccessControlled, DescriptorByNameOwner, ModelObjectWithContextMenu {
     private transient final Queue queue;
 
     /**
@@ -590,7 +591,7 @@ public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLe
      * @since 1.467
      */
     @Exported
-    public transient final LoadStatistics unlabeledLoad = new UnlabeldLoadStatistics();
+    public transient final LoadStatistics unlabeledLoad = new UnlabeledLoadStatistics();
 
     /**
      * {@link NodeProvisioner} that reacts to {@link #unlabeledLoad}.
@@ -2258,7 +2259,7 @@ public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLe
      *      null if either such {@link Item} doesn't exist under the given full name,
      *      or it exists but it's no an instance of the given type.
      */
-    public <T extends Item> T getItemByFullName(String fullName, Class<T> type) {
+    public @CheckForNull <T extends Item> T getItemByFullName(String fullName, Class<T> type) {
         StringTokenizer tokens = new StringTokenizer(fullName,"/");
         ItemGroup parent = this;
 
@@ -2283,38 +2284,24 @@ public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLe
         }
     }
 
-    public Item getItemByFullName(String fullName) {
+    public @CheckForNull Item getItemByFullName(String fullName) {
         return getItemByFullName(fullName,Item.class);
     }
 
     /**
      * Gets the user of the given name.
      *
-     * @return
-     *      This method returns a non-null object for any user name, without validation.
+     * @return the user of the given name, if that person exists or the invoker {@link #hasPermission} on {@link #ADMINISTER}; else null
+     * @see User#get(String,boolean)
      */
-    public User getUser(String name) {
+    public @CheckForNull User getUser(String name) {
         return User.get(name,hasPermission(ADMINISTER));
     }
 
-    /**
-     * Creates a new job.
-     *
-     * @throws IllegalArgumentException
-     *      if the project of the given name already exists.
-     */
     public synchronized TopLevelItem createProject( TopLevelItemDescriptor type, String name ) throws IOException {
         return createProject(type, name, true);
     }
 
-    /**
-     * Creates a new job.
-     * @param type Descriptor for job type
-     * @param name Name for job
-     * @param notify Whether to fire onCreated method for all ItemListeners
-     * @throws IllegalArgumentException
-     *      if a project of the give name already exists.
-     */
     public synchronized TopLevelItem createProject( TopLevelItemDescriptor type, String name, boolean notify ) throws IOException {
         return itemGroupMixIn.createProject(type,name,notify);
     }
@@ -2419,6 +2406,7 @@ public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLe
         return fixNull(label).trim();
     }
 
+    @Override
     public void setLabelString(String label) throws IOException {
         this.label = label;
         save();
@@ -2803,24 +2791,13 @@ public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLe
     }
 
     /**
-     * Creates a new job from its configuration XML. The type of the job created will be determined by
-     * what's in this XML.
      * @since 1.319
      */
     public TopLevelItem createProjectFromXML(String name, InputStream xml) throws IOException {
         return itemGroupMixIn.createProjectFromXML(name, xml);
     }
 
-    /**
-     * Copys a job.
-     *
-     * @param src
-     *      A {@link TopLevelItem} to be copied.
-     * @param name
-     *      Name of the newly created project.
-     * @return
-     *      Newly created {@link TopLevelItem}.
-     */
+
     @SuppressWarnings({"unchecked"})
     public <T extends TopLevelItem> T copy(T src, String name) throws IOException {
         return itemGroupMixIn.copy(src, name);
@@ -3023,7 +3000,14 @@ public class Jenkins extends AbstractCIBase implements ModifiableItemGroup<TopLe
     }
 
     public ContextMenu doContextMenu(StaplerRequest request, StaplerResponse response) throws IOException, JellyException {
-        return new ContextMenu().from(this,request,response);
+        ContextMenu menu = new ContextMenu().from(this, request, response);
+        for (MenuItem i : menu.items) {
+            if (i.url.equals("/manage")) {
+                // add "Manage Jenkins" subitems
+                i.subMenu = new ContextMenu().from(this, request, response, "manage");
+            }
+        }
+        return menu;
     }
 
     /**

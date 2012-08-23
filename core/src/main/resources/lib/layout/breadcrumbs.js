@@ -102,9 +102,12 @@ var breadcrumbs = (function() {
             xhr = new Ajax.Request(combinePath(e.getAttribute("href"),"contextMenu"), {
                 onComplete:function (x) {
                     var a = x.responseText.evalJSON().items;
-                    a.each(function (e) {
+                    function fillMenuItem(e) {
                         e.text = makeMenuHtml(e.icon, e.displayName);
-                    });
+                        if (e.subMenu!=null)
+                            e.subMenu = {id:"submenu"+(iota++), itemdata:e.subMenu.items.each(fillMenuItem)};
+                    }
+                    a.each(fillMenuItem);
                     e.items = function() { return a };
                     showMenu(a);
                 }
@@ -116,7 +119,9 @@ var breadcrumbs = (function() {
 
     jenkinsRules["#breadcrumbs LI"] = function (e) {
         // when the mouse hovers over LI, activate the menu
-        $(e).observe("mouseover", function () { handleHover(e.firstChild,0) });
+        e = $(e);
+        if (e.hasClassName("no-context-menu"))  return;
+        e.observe("mouseover", function () { handleHover(e.firstChild,0) });
     };
 
     jenkinsRules["A.model-link"] = function (a) {

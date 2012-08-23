@@ -88,6 +88,7 @@ import java.nio.charset.Charset;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.Inet4Address;
+import javax.annotation.CheckForNull;
 
 import static javax.servlet.http.HttpServletResponse.*;
 
@@ -179,6 +180,12 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
     		result.addAll(transientActions);
     	}
     	return result;
+    }
+
+    @Override
+    public void addAction(Action a) {
+        if(a==null) throw new IllegalArgumentException();
+        super.getActions().add(a);
     }
 
     /**
@@ -419,7 +426,7 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
      *      null if the configuration has changed and the node is removed, yet the corresponding {@link Computer}
      *      is not yet gone.
      */
-    public Node getNode() {
+    public @CheckForNull Node getNode() {
         if(nodeName==null)
             return Jenkins.getInstance();
         return Jenkins.getInstance().getNode(nodeName);
@@ -1045,9 +1052,8 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
     }
 
     protected void _doScript( StaplerRequest req, StaplerResponse rsp, String view) throws IOException, ServletException {
-        // ability to run arbitrary script is dangerous,
-        // so tie it to the admin access
-        checkPermission(Jenkins.ADMINISTER);
+        // ability to run arbitrary script is dangerous
+        checkPermission(Jenkins.RUN_SCRIPTS);
 
         String text = req.getParameter("script");
         if(text!=null) {

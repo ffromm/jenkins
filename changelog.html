@@ -55,6 +55,129 @@ Upcoming changes</a>
 <!-- Record your changes in the trunk here. -->
 <div id="trunk" style="display:none"><!--=TRUNK-BEGIN=-->
 <ul class=image>
+  <li class=>
+</ul>
+</div><!--=TRUNK-END=-->
+
+<!-- these changes are controlled by the release process. DO NOT MODIFY -->
+<div id="rc" style="display:none;"><!--=BEGIN=-->
+<h3><a name=v1.479>What's new in 1.479</a> <!--=DATE=--></h3>
+<ul class=image>
+  <li class=bug>
+    "Ping-pong" builds store excessively large <code>CauseAction</code>.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14814">issue 14814</a>)
+  <li class=bug>
+    Avoid a 404 when navigating to upstream builds.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14816">issue 14816</a>)
+  <li class=bug>
+    Avoid a 404 when canceling queue items.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14813">issue 14813</a>)
+  <li class=bug>
+    Added missing parameters as defaults when called from CLI
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-7162">issue 7162</a>)
+  <li class=bug>
+    NPE from <code>UpdateSite$Plugin.getNeededDependencies</code>.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14769">issue 14769</a>)
+  <li class=bug>
+    Description preview and syntax highlighting broken since 1.477.
+  <li class=bug>
+    Parameter values disappear if user is not logged in
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-7894">issue 7894</a>)
+</ul>
+</div><!--=END=-->
+<h3><a name=v1.478>What's new in 1.478</a> (2012/08/20)</h3>
+<ul class=image>
+  <li class='major bug'>
+    "Monitor External Job" broken since 1.468.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14107">issue 14107</a>)
+  <li class=bug>
+    Matrix configuration axes are no longer automatically re-ordered to alphanumeric order on reload.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14696">issue 14696</a>)
+</ul>
+<h3><a name=v1.477>What's new in 1.477</a> (2012/08/08)</h3>
+<ul class=image>
+  <li class=bug>
+    Annotation processor bugs in Stapler affecting plugin compilation.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11739">issue 11739</a>)
+  <li class='major bug'>
+    Regressions in add/delete buttons starting in 1.474.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14434">issue 14434</a> and <a href="https://issues.jenkins-ci.org/browse/JENKINS-14495">issue 14495</a>)
+  <li class=rfe>
+    Collapse nonempty tool installation sections by default in <code>/configure</code>.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14538">issue 14538</a>)
+  <li class=bug>
+    Custom workspace in matrix projects should be able to use axis as variables.
+  <li class=bug>
+    New <tt>SCMCheckoutStrategy</tt> extension wasn't workin for matrix projects.
+    (<a href="https://github.com/jenkinsci/jenkins/pull/519">pull 519</a>)
+  <li class=bug>
+    Fixed a problem in the concurrent matrix build.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-13972">issue 13972</a>)
+  <li class=bug>
+    Single invalid e-mail address shouldn't cause the entire e-mail delivery to fail.
+    (<a href="https://github.com/jenkinsci/jenkins/pull/526">pull 526</a>)
+  <li class=bug>
+    Dynamically recomputing matrix axes wasn't working.
+    (<a href="https://github.com/jenkinsci/jenkins/pull/523">pull 523</a>)
+  <li class=bug>
+    "Text" build parameter should use &lt;textarea> for configuration
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-13916">issue 13916</a>)
+  <li class=rfe>
+    Make the draggable component more obvious by providing a border.
+  <li class=rfe>
+    Added REST API for view manipulation
+  <li class="rfe">
+    OS X installer now has an Uninstall tool (in /Library/Application Support/Jenkins).
+  <li class=rfe>
+    Added "manage Jenkins" as a sub-menu to the Jenkins context menu.
+  <li class=rfe>
+    Executor is exposed to the remote API
+    (<a href="https://github.com/jenkinsci/jenkins/pull/520">pull 520</a>)
+  <li class=rfe>
+    Changed defaults for the Mac installer to make iOS codesigning easier.
+  <li class=rfe>
+    Notify user when search result is truncated and provide link to get more results
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-10747">issue 10747</a>)
+  <li class=rfe>
+    Add a setter for node label string.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14327">issue 14327</a>)
+  <li class=rfe>
+    Option to set java executable path for managed windows slaves
+  <li class=rfe>
+    Added new extension point for transient user actions, and displays user properties if they are also Actions.
+</ul>
+<h3><a name=v1.476>What's new in 1.476</a> (2012/07/31)</h3>
+<ul class=image>
+  <li class=bug>
+    <code>NullPointerException</code> from <code>JUnitParser.parse</code>.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14507">issue 14507</a>)
+</ul>
+<h3><a name=v1.475>What's new in 1.475</a> (2012/07/22)</h3>
+<ul class=image>
+  <li class=bug>
+    Enable/disable GUI for jobs either did not appear, or threw exceptions, for jobs inside folders
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14325">issue 14325</a>)
+  <li class=bug>
+      <code>NullPointerException</code> from <code>UnlabeldLoadStatistics</code> <i>[sic]</i>
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14330">issue 14330</a>)
+  <li class=bug>
+      Incorrect display of list items in project changes for SCMs such as Mercurial.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14365">issue 14365</a>)
+</ul>
+<h3><a name=v1.474>What's new in 1.474</a> (2012/07/09)</h3>
+<ul class=image>
+  <li class=bug>
+    Fix French translation
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-13274">issue 13274</a>)
+  <li class=rfe>
+    Avoid doing AJAX updates if the page becomes invisible.
+    (<a href="https://github.com/jenkinsci/jenkins/pull/506">pull 506</a>)
+  <li class=rfe>
+    Added a new extension point to listen to polling activities.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-14178">issue 14178</a>)
+</ul>
+<h3><a name=v1.473>What's new in 1.473</a> (2012/07/01)</h3>
+<ul class=image>
   <li class=bug>
     Updating job config.xml shouldn't clobber in-progress builds.
     (<a href="https://issues.jenkins-ci.org/browse/JENKINS-12318">issue 12318</a>)
@@ -65,11 +188,7 @@ Upcoming changes</a>
     Updated typo in Serbian translation.
     (<a href="https://issues.jenkins-ci.org/browse/JENKINS-13695">issue 13695</a>)
 </ul>
-</div><!--=TRUNK-END=-->
-
-<!-- these changes are controlled by the release process. DO NOT MODIFY -->
-<div id="rc" style="display:none;"><!--=BEGIN=-->
-<h3><a name=v1.472>What's new in 1.472</a> <!--=DATE=--></h3>
+<h3><a name=v1.472>What's new in 1.472</a> (2012/06/24)</h3>
 <ul class=image>
   <li class=bug>
     Fixed a synchronization problem between master/slave data communication.
@@ -86,7 +205,6 @@ Upcoming changes</a>
     Added a new hook to enable matrix project axes to change its values per build.
     (<a href="https://github.com/jenkinsci/jenkins/pull/449">pull 449</a>)
 </ul>
-</div><!--=END=-->
 <h3><a name=v1.471>What's new in 1.471</a> (2012/06/18)</h3>
 <ul class=image>
   <li class=bug>
@@ -604,6 +722,9 @@ Upcoming changes</a>
   <li class=bug>
     Link to user profile from console output should go to the user ID, not the user name
     (<a href="https://issues.jenkins-ci.org/browse/JENKINS-12279">issue 12279</a>)
+  <li class=bug>
+    Copy artifacts fails on windows slaves due to failing to set a timestamp.
+    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11073">issue 11073</a>)
 </ul>
 <h3><a name=v1.446>What's new in 1.446</a> (2012/01/02)</h3>
 <ul class=image>
@@ -706,9 +827,6 @@ Upcoming changes</a>
   <li class=bug>
     Fixed ConcurrentModificationException in parallel Maven 3 builds.
     (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11256">issue 11256</a>)
-  <li class=bug>
-    Copy artifacts fails on windows slaves due to failing to set a timestamp.
-    (<a href="https://issues.jenkins-ci.org/browse/JENKINS-11073">issue 11073</a>)
   <li class=rfe>
     Upgrade aether version to 1.13 and sisu to 2.3.0 .
   <li class=rfe>

@@ -35,7 +35,6 @@ import hudson.util.FormValidation.Kind;
 import hudson.util.HttpResponses;
 import hudson.util.IOUtils;
 import hudson.util.TextFile;
-import hudson.util.TimeUnit2;
 import hudson.util.VersionNumber;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONException;
@@ -46,19 +45,16 @@ import org.jvnet.hudson.crypto.CertificateUtil;
 import org.jvnet.hudson.crypto.SignatureOutputStream;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.HttpResponse;
-import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
+import org.kohsuke.stapler.interceptor.RequirePOST;
 
-import javax.servlet.ServletContext;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.security.DigestOutputStream;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
@@ -94,6 +90,7 @@ import static hudson.util.TimeUnit2.*;
  * @author Kohsuke Kawaguchi
  * @since 1.333
  */
+@ExportedBean
 public class UpdateSite {
     /**
      * What's the time stamp of data file?
@@ -152,10 +149,12 @@ public class UpdateSite {
     /**
      * Get ID string.
      */
+    @Exported
     public String getId() {
         return id;
     }
 
+    @Exported
     public long getDataTimestamp() {
         return dataTimestamp;
     }
@@ -314,6 +313,7 @@ public class UpdateSite {
      *
      * @since 1.432
      */
+    @RequirePOST
     public HttpResponse doInvalidateData() {
         Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
         dataTimestamp = 0;
@@ -365,6 +365,7 @@ public class UpdateSite {
      * Returns a list of plugins that should be shown in the "available" tab.
      * These are "all plugins - installed plugins".
      */
+    @Exported
     public List<Plugin> getAvailables() {
         List<Plugin> r = new ArrayList<Plugin>();
         Data data = getData();
@@ -391,9 +392,14 @@ public class UpdateSite {
         return dt.plugins.get(artifactId);
     }
 
+    public Api getApi() {
+        return new Api(this);
+    }
+
     /**
      * Returns an "always up" server for Internet connectivity testing, or null if we are going to skip the test.
      */
+    @Exported
     public String getConnectionCheckUrl() {
         Data dt = getData();
         if(dt==null)    return "http://www.google.com/";
@@ -414,6 +420,7 @@ public class UpdateSite {
      * @return
      *      can be empty but never null.
      */
+    @Exported
     public List<Plugin> getUpdates() {
         Data data = getData();
         if(data==null)      return Collections.emptyList(); // fail to determine
@@ -430,6 +437,7 @@ public class UpdateSite {
     /**
      * Does any of the plugin has updates?
      */
+    @Exported
     public boolean hasUpdates() {
         Data data = getData();
         if(data==null)      return false;
@@ -448,6 +456,7 @@ public class UpdateSite {
      * Exposed to get rid of hardcoding of the URL that serves up update-center.json
      * in Javascript.
      */
+    @Exported
     public String getUrl() {
         return url;
     }
@@ -708,6 +717,10 @@ public class UpdateSite {
 
             for(Map.Entry<String,String> e : dependencies.entrySet()) {
                 Plugin depPlugin = Jenkins.getInstance().getUpdateCenter().getPlugin(e.getKey());
+                if (depPlugin == null) {
+                    LOGGER.log(Level.WARNING, "Could not find dependency {0} of {1}", new Object[] {e.getKey(), name});
+                    continue;
+                }
                 VersionNumber requiredVersion = new VersionNumber(e.getValue());
                 
                 // Is the plugin installed already? If not, add it.
@@ -779,11 +792,13 @@ public class UpdateSite {
         /**
          * Making the installation web bound.
          */
+        @RequirePOST
         public HttpResponse doInstall() throws IOException {
             deploy(false);
             return HttpResponses.redirectTo("../..");
         }
 
+        @RequirePOST
         public HttpResponse doInstallNow() throws IOException {
             deploy(true);
             return HttpResponses.redirectTo("../..");
@@ -792,6 +807,7 @@ public class UpdateSite {
         /**
          * Performs the downgrade of the plugin.
          */
+        @RequirePOST
         public HttpResponse doDowngrade() throws IOException {
             deployBackup();
             return HttpResponses.redirectTo("../..");
