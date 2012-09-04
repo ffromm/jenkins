@@ -224,14 +224,18 @@ public class Maven3Builder extends AbstractMavenBuilder implements DelegatingCal
             for (Entry<ModuleName,FilterImpl> e : this.proxies.entrySet()) {
                 MavenProject project = buildingProjects.get(e.getKey());
                 if (project!=null) {
-                    for (MavenReporter mavenReporter : fixNull(reporters.get(e.getKey()))) {
-                        try {
-                            mavenReporter.preBuild( e.getValue() ,project, maven3Builder.listener);
-                        } catch ( InterruptedException x ) {
-                            x.printStackTrace();
-                        } catch ( IOException x ) {
-                            x.printStackTrace();
+                    try {
+                        for (MavenReporter mavenReporter : fixNull(reporters.get(e.getKey()))) {
+                            try {
+                                mavenReporter.preBuild( e.getValue() ,project, maven3Builder.listener);
+                            } catch ( InterruptedException x ) {
+                                x.printStackTrace();
+                            } catch ( IOException x ) {
+                                x.printStackTrace();
+                            }
                         }
+                    } catch (NullPointerException npe) {
+                        LOGGER.warning("npe getting reporter " + e.getKey() + " from " + reporters + ": " + npe.getMessage());
                     }
                 } else {
                     // set all modules which are not actually being build (in incremental builds) to NOT_BUILD (JENKINS-9072)
@@ -257,14 +261,18 @@ public class Maven3Builder extends AbstractMavenBuilder implements DelegatingCal
             for (Entry<ModuleName,FilterImpl> e : fixNull(this.proxies.entrySet())) {
                 MavenProject project = buildingProjects.get(e.getKey());
                 if (project!=null) {
-                    for (MavenReporter mavenReporter : reporters.get(e.getKey())) {
-                        try {
-                            mavenReporter.postBuild( e.getValue() ,project, maven3Builder.listener);
-                        } catch ( InterruptedException x ) {
-                            x.printStackTrace();
-                        } catch ( IOException x ) {
-                            x.printStackTrace();
+                    try {
+                        for (MavenReporter mavenReporter : reporters.get(e.getKey())) {
+                            try {
+                                mavenReporter.postBuild( e.getValue() ,project, maven3Builder.listener);
+                            } catch ( InterruptedException x ) {
+                                x.printStackTrace();
+                            } catch ( IOException x ) {
+                                x.printStackTrace();
+                            }
                         }
+                    } catch (NullPointerException npe) {
+                        LOGGER.warning("npe getting reporter " + e.getKey() + " from " + reporters + ": " + npe.getMessage());
                     }
                 }
             }

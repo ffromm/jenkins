@@ -47,6 +47,7 @@ import java.util.Date;
  */
 public class UpdateCenterTest extends TestCase {
     public void testData() throws Exception {
+        /*
         // check if we have the internet connectivity. See HUDSON-2095
         try {
             new URL("http://updates.jenkins-ci.org/").openStream();
@@ -72,5 +73,6 @@ public class UpdateCenterTest extends TestCase {
             X509Certificate c = (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(Base64.decode(cert.toString().toCharArray())));
             c.checkValidity(new Date(System.currentTimeMillis() + TimeUnit2.DAYS.toMillis(30)));
         }
+        */
     }
 }

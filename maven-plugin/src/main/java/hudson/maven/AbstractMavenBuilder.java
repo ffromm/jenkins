@@ -97,11 +97,15 @@ public abstract class AbstractMavenBuilder implements DelegatingCallable<Result,
     void end(Launcher launcher) throws IOException, InterruptedException {
         for (Map.Entry<ModuleName,ProxyImpl2> e : sourceProxies.entrySet()) {
             ProxyImpl2 p = e.getValue();
-            for (MavenReporter r : reporters.get(e.getKey())) {
-                // we'd love to do this when the module build ends, but doing so requires
-                // we know how many task segments are in the current build.
-                r.end(p.owner(),launcher,listener);
-                p.appendLastLog();
+            try {
+                for (MavenReporter r : reporters.get(e.getKey())) {
+                    // we'd love to do this when the module build ends, but doing so requires
+                    // we know how many task segments are in the current build.
+                    r.end(p.owner(),launcher,listener);
+                    p.appendLastLog();
+                }
+            } catch (NullPointerException npe) {
+                listener.getLogger().println("npe getting reporter " + e.getKey() + " from " + reporters + ": " + npe.getMessage());
             }
             p.close();
         }
@@ -128,6 +132,7 @@ public abstract class AbstractMavenBuilder implements DelegatingCallable<Result,
      *      as it blows up Maven.
      * @see http://jenkins.361315.n4.nabble.com/Upgrade-to-1-424-broke-our-Maven-builds-due-to-empty-system-property-key-td3726460.html
      */
+    @SuppressWarnings("JavadocReference")
     protected void registerSystemProperties() {
         for (Map.Entry<String,String> e : systemProps.entrySet()) {
             if ("".equals(e.getKey()))

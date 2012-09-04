@@ -405,7 +405,13 @@ public class MailSender {
             if(debug)
                 listener.getLogger().println("  User "+a.getId()+" -> "+adrs);
             if (adrs != null)
-                r.add(new InternetAddress(adrs));
+            {
+                try {
+                    r.add(new InternetAddress(adrs));
+                } catch(AddressException e) {
+                    listener.getLogger().println("Invalid address: " + adrs);
+                }
+            }
             else {
                 listener.getLogger().println(Messages.MailSender_NoAddress(a.getFullName()));
             }
