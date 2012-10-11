@@ -139,8 +139,10 @@ public class JUnitResultArchiver extends Recorder implements MatrixAggregatable 
 				throw new AbortException(Messages.JUnitResultArchiver_BadXML(testResults));
 			}
             result.freeze(action);
+            /** ffromm, 10.10.2012: disabled as we accept test suites where all tests are skipped
 			if (result.getPassCount() == 0 && result.getFailCount() == 0)
 				throw new AbortException(Messages.JUnitResultArchiver_ResultIsEmpty());
+            **/
 
             // TODO: Move into JUnitParser [BUG 3123310]
 			List<Data> data = new ArrayList<Data>();
