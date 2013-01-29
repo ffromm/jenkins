@@ -59,7 +59,7 @@ import org.kohsuke.stapler.StaplerResponse;
  * @author Kohsuke Kawaguchi
  */
 public class FileParameterValue extends ParameterValue {
-    private final FileItem file;
+    private transient final FileItem file;
 
     /**
      * The name of the originally uploaded file.
@@ -181,7 +181,14 @@ public class FileParameterValue extends ParameterValue {
             AbstractBuild build = (AbstractBuild)request.findAncestor(AbstractBuild.class).getObject();
             File fileParameter = getLocationUnderBuild(build);
             if (fileParameter.isFile()) {
-                response.serveFile(request, fileParameter.toURI().toURL());
+                InputStream data = new FileInputStream(fileParameter);
+                long lastModified = fileParameter.lastModified();
+                long contentLength = fileParameter.length();
+                if (request.hasParameter("view")) {
+                    response.serveFile(request, data, lastModified, contentLength, "plain.txt");
+                } else {
+                    response.serveFile(request, data, lastModified, contentLength, originalFileName);
+                }
             }
         }
     }

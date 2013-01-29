@@ -24,8 +24,10 @@
  */
 package hudson.model;
 
+import com.google.common.collect.ImmutableList;
 import hudson.AbortException;
 import hudson.BulkChange;
+import hudson.CopyOnWrite;
 import hudson.ExtensionList;
 import hudson.ExtensionPoint;
 import hudson.Util;
@@ -87,6 +89,7 @@ import java.util.TreeSet;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -102,6 +105,7 @@ import org.kohsuke.stapler.export.ExportedBean;
 
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.converters.basic.AbstractSingleValueConverter;
+import org.kohsuke.stapler.QueryParameter;
 
 /**
  * Build queue.
@@ -159,6 +163,41 @@ public class Queue extends ResourceController implements Saveable {
      * has not started yet.
      */
     private final ItemList<BuildableItem> pendings = new ItemList<BuildableItem>();
+
+    private final CachedItemList itemsView = new CachedItemList();
+
+    /**
+     * Maintains a copy of {@link Queue#getItems()}
+     *
+     * @see Queue#getApproximateItemsQuickly()
+     */
+    private class CachedItemList {
+        /**
+         * The current cached value.
+         */
+        @CopyOnWrite
+        private volatile List<Item> itemsView = Collections.emptyList();
+        /**
+         * When does the cache info expire?
+         */
+        private final AtomicLong expires = new AtomicLong();
+
+        List<Item> get() {
+            long t = System.currentTimeMillis();
+            long d = expires.get();
+            if (t>d) {// need to refresh the cache
+                long next = t+1000;
+                if (expires.compareAndSet(d,next)) {
+                    // avoid concurrent cache update via CAS.
+                    // if the getItems() lock is contended,
+                    // some threads will end up serving stale data,
+                    // but that's OK.
+                    itemsView = ImmutableList.copyOf(getItems());
+                }
+            }
+            return itemsView;
+        }
+    }
 
     /**
      * Data structure created for each idle {@link Executor}.
@@ -570,6 +609,17 @@ public class Queue extends ResourceController implements Saveable {
         return r;
     }
 
+    /**
+     * Called from {@code queue.jelly} and {@code entries.jelly}.
+     */
+    public HttpResponse doCancelItem(@QueryParameter int id) throws IOException, ServletException {
+        Item item = getItem(id);
+        if (item != null) {
+            cancel(item);
+        } // else too late, ignore (JENKINS-14813)
+        return HttpResponses.forwardToPreviousPage();
+    }
+
     public synchronized boolean isEmpty() {
         return waitingList.isEmpty() && blockedProjects.isEmpty() && buildables.isEmpty() && pendings.isEmpty();
     }
@@ -596,6 +646,27 @@ public class Queue extends ResourceController implements Saveable {
         for (BuildableItem p : reverse(pendings.values()))
             r[idx++] = p;
         return r;
+    }
+
+    /**
+     * Like {@link #getItems()}, but returns an approximation that might not be completely up-to-date.
+     *
+     * <p>
+     * At the expense of accuracy, this method does not lock {@link Queue} and therefore is faster
+     * in a highly concurrent situation.
+     *
+     * <p>
+     * The list obtained is an accurate snapshot of the queue at some point in the past. The snapshot
+     * is updated and normally no less than one second old, but this is a soft commitment that might
+     * get violated when the lock on {@link Queue} is highly contended.
+     *
+     * <p>
+     * This method is primarily added to make UI threads run faster.
+     *
+     * @since 1.483
+     */
+    public List<Item> getApproximateItemsQuickly() {
+        return itemsView.get();
     }
     
     public synchronized Item getItem(int id) {
@@ -689,6 +760,13 @@ public class Queue extends ResourceController implements Saveable {
             if(bi.getAssignedLabel()==l)
                 r++;
         return r;
+    }
+
+    /**
+     * Counts all the {@link BuildableItem}s currently in the queue.
+     */
+    public synchronized int countBuildableItems() {
+        return buildables.size()+pendings.size();
     }
 
     /**
@@ -1260,6 +1338,14 @@ public class Queue extends ResourceController implements Saveable {
          */
         public Future<Executable> getFuture() { return future; }
 
+        /**
+         * If this task needs to be run on a node with a particular label,
+         * return that {@link Label}. Otherwise null, indicating
+         * it can run on anywhere.
+         * 
+         * <p>
+         * This code takes {@link LabelAssignmentAction} into account, then fall back to {@link SubTask#getAssignedLabel()}
+         */
         public Label getAssignedLabel() {
             for (LabelAssignmentAction laa : getActions(LabelAssignmentAction.class)) {
                 Label l = laa.getAssignedLabel(task);
@@ -1347,9 +1433,8 @@ public class Queue extends ResourceController implements Saveable {
 			return null;
 		}
 
-        /**
-         * Called from queue.jelly.
-         */
+        /** @deprecated Use {@link #doCancelItem} instead. */
+        @Deprecated
         public HttpResponse doCancelQueue() throws IOException, ServletException {
         	Jenkins.getInstance().getQueue().cancel(this);
             return HttpResponses.forwardToPreviousPage();
@@ -1627,6 +1712,26 @@ public class Queue extends ResourceController implements Saveable {
 			public String toString(Object object) {
 				Run<?,?> run = (Run<?,?>) object;
 				return run.getParent().getFullName() + "#" + run.getNumber();
+			}
+        });
+
+        /**
+         * Reconnect every reference to {@link Queue} by the singleton.
+         */
+        XSTREAM.registerConverter(new AbstractSingleValueConverter() {
+			@Override
+			public boolean canConvert(Class klazz) {
+				return Queue.class.isAssignableFrom(klazz);
+			}
+
+			@Override
+			public Object fromString(String string) {
+                return Jenkins.getInstance().getQueue();
+			}
+
+			@Override
+			public String toString(Object item) {
+                return "queue";
 			}
         });
     }

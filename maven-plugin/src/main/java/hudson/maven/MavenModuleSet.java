@@ -29,7 +29,6 @@ import static hudson.model.ItemGroupMixIn.loadChildren;
 import hudson.CopyOnWrite;
 import hudson.EnvVars;
 import hudson.Extension;
-import hudson.ExtensionList;
 import hudson.FilePath;
 import hudson.Functions;
 import hudson.Indenter;
@@ -60,7 +59,6 @@ import hudson.model.TopLevelItem;
 import hudson.search.CollectionSearchIndex;
 import hudson.search.SearchIndexBuilder;
 import hudson.tasks.BuildStep;
-import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.BuildWrappers;
 import hudson.tasks.Builder;
@@ -799,20 +797,32 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
         final Set<ResourceActivity> activities = new HashSet<ResourceActivity>();
 
         activities.addAll(super.getResourceActivities());
-        activities.addAll(Util.filter(publishers,ResourceActivity.class));
+        activities.addAll(Util.filter(publishers, ResourceActivity.class));
         activities.addAll(Util.filter(buildWrappers, ResourceActivity.class));
-        activities.addAll(Util.filter(prebuilders,ResourceActivity.class));
-        activities.addAll(Util.filter(postbuilders,ResourceActivity.class));
+        activities.addAll(Util.filter(prebuilders, ResourceActivity.class));
+        activities.addAll(Util.filter(postbuilders, ResourceActivity.class));
 
         return activities;
     }
 
     /**
-     * Gets the location of top-level <tt>pom.xml</tt> relative to the workspace root.
+     *
+     * @deprecated for backward comp only
+     * @return
      */
-    public String getRootPOM() {
-        if(rootPOM==null)   return "pom.xml";
-        return rootPOM;
+    public String getRootPOM(){
+        return getRootPOM( null );
+    }
+
+    /**
+     * Gets the location of top-level <tt>pom.xml</tt> relative to the workspace root.
+     * @since 1.466
+     */
+    public String getRootPOM(EnvVars env) {
+        if (rootPOM == null) return "pom.xml";
+        // JENKINS-13822
+        if (env == null) return rootPOM;
+        return env.expand(rootPOM);
     }
 
     public void setRootPOM(String rootPOM) {
@@ -981,8 +991,19 @@ public class MavenModuleSet extends AbstractMavenProject<MavenModuleSet,MavenMod
      * Returns the {@link MavenModule}s that are in the queue.
      */
     public List<Queue.Item> getQueueItems() {
-        List<Queue.Item> r = new ArrayList<hudson.model.Queue.Item>();
-        for( Queue.Item item : Jenkins.getInstance().getQueue().getItems() ) {
+        return filter(Arrays.asList(Jenkins.getInstance().getQueue().getItems()));
+    }
+
+    /**
+     * Returns the {@link MavenModule}s that are in the queue.
+     */
+    public List<Queue.Item> getApproximateQueueItemsQuickly() {
+        return filter(Jenkins.getInstance().getQueue().getApproximateItemsQuickly());
+    }
+
+    private List<Queue.Item> filter(Collection<Queue.Item> base) {
+        List<Queue.Item> r = new ArrayList<Queue.Item>();
+        for( Queue.Item item : base) {
             Task t = item.task;
             if((t instanceof MavenModule && ((MavenModule)t).getParent()==this) || t ==this)
                 r.add(item);

@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import jenkins.model.Jenkins;
+import jenkins.util.io.OnMaster;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.BindInterceptor;
 import org.kohsuke.stapler.Stapler;
@@ -77,7 +78,7 @@ import org.kohsuke.stapler.export.Exported;
  * @see NodeDescriptor
  */
 @ExportedBean
-public abstract class Node extends AbstractModelObject implements ReconfigurableDescribable<Node>, ExtensionPoint, AccessControlled {
+public abstract class Node extends AbstractModelObject implements ReconfigurableDescribable<Node>, ExtensionPoint, AccessControlled, OnMaster {
 
     private static final Logger LOGGER = Logger.getLogger(Node.class.getName());
 
@@ -275,10 +276,10 @@ public abstract class Node extends AbstractModelObject implements Reconfigurable
      *
      * @param labelString
      *      The new label string to use.
-     * @since 1.475
+     * @since 1.477
      */
     public void setLabelString(String labelString) throws IOException {
-        // noop
+        throw new UnsupportedOperationException();
     }
 
     /**
